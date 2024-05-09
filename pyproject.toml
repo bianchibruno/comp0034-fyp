@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "comp0034-cw1"
+version = "0.1.0"
+description = "a ChatGPT solution for COMP0034 coursework 1"
+authors = ["Bruno Bianchi"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+Flask = "3.0.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
