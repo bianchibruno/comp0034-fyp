@@ -1,12 +1,14 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
+from flask_marshmallow import Marshmallow
 import secrets
 import csv
 from pathlib import Path
 import os
 
 db = SQLAlchemy()
+ma = Marshmallow()
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
@@ -30,28 +32,29 @@ def create_app(test_config=None):
     
     # Initialise Flask with the SQLAlchemy database extension
     db.init_app(app)
+    ma.init_app(app)
 
-    from .models import User, Dataset
+    from .models import User, Request
 
     with app.app_context():
         from . import routes
-        # routes.setup_routes(app)
+        routes.setup_routes(app)
         db.create_all()
         add_data_from_csv()
 
     return app
 
 def add_data_from_csv():
-    from .models import Dataset
+    from .models import Request
    
-    if not Dataset.query.first():
+    if not Request.query.first():
         print("Adding initial request data to the database.")
         request_file = Path(__file__).parent.parent.joinpath("data", "dataset_prepared.csv")
         with open(request_file, 'r', encoding='utf-8') as file:
             csv_reader = csv.reader(file)
             next(csv_reader)  # Skip the header row
             for row in csv_reader:
-                request = Dataset(
+                request = Request(
                     case_type=row[0],
                     status=row[1],
                     request_received_year=row[2] if row[2] else None,

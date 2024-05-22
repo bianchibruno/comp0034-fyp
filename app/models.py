@@ -3,11 +3,17 @@ from sqlalchemy import Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 class User(db.Model):
+    __tablename__ = 'user'
+    __table_args__ = {'extend_existing': True}  # Add this line
+
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
     email: Mapped[str] = mapped_column(db.Text, unique=True, nullable=False)
     password: Mapped[str] = mapped_column(db.Text, unique=True, nullable=False)
 
-class Dataset(db.Model):
+class Request(db.Model):
+    __tablename__ = 'request'
+    __table_args__ = {'extend_existing': True}  # Add this line
+    
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
     case_type: Mapped[str] = mapped_column(db.String(128), nullable=False, index=True)
     status: Mapped[str] = mapped_column(db.String(128), nullable=False, index=True)
