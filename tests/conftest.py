@@ -1,6 +1,8 @@
 import pytest
 from app import create_app, db
 import os
+from app.models import Request
+
 
 @pytest.fixture(scope='module')
 def app():
@@ -28,3 +30,23 @@ def app():
 def client(app):
     """A test client for the app."""
     return app.test_client()
+
+@pytest.fixture(scope='function')
+def new_request(app):
+    """Fixture to add a new request to the database."""
+    with app.app_context():
+        new_request = Request(
+            case_type='FOIA Case',
+            status='Open',
+            request_received_year=2023,
+            request_received_quarter='Q1',
+            request_received_month='January',
+            case_active_days_grouped='Up to 20 days used'
+        )
+        db.session.add(new_request)
+        db.session.commit()
+        yield new_request
+
+        # Cleanup code: remove the request if it still exists
+        db.session.delete(new_request)
+        db.session.commit()
