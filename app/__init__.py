@@ -7,6 +7,7 @@ import csv
 from pathlib import Path
 import os
 
+# could cause problems of model_class is not DeclarativeBase
 db = SQLAlchemy()
 ma = Marshmallow()
 
@@ -36,12 +37,17 @@ def create_app(test_config=None):
 
     from .models import User, Request
 
+    @app.route('/hello')
+    def hello():
+        return 'Hello, World!'
+
     with app.app_context():
-        from . import routes
-        routes.setup_routes(app)
+        # routes.setup_routes(app)
         db.create_all()
         add_data_from_csv()
 
+        from app import routes
+        app.register_blueprint(routes.bp)
     return app
 
 def add_data_from_csv():

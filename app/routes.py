@@ -30,10 +30,10 @@ def add_request():
 @bp.route('/requests/<int:request_id>', methods=['PATCH'])
 def update_request(request_id):
     request_data = request.get_json()
-    request = Request.query.get_or_404(request_id)
-    request_schema.load(request_data, instance=request, partial=True)
+    request_item = Request.query.get_or_404(request_id)
+    request_schema.load(request_data, instance=request_item, partial=True)
     db.session.commit()
-    return request_schema.jsonify(request)
+    return request_schema.jsonify(request_item)
 
 @bp.route('/requests/<int:request_id>', methods=['DELETE'])
 def delete_request(request_id):
@@ -44,25 +44,3 @@ def delete_request(request_id):
 
 def init_app(app):
     app.register_blueprint(bp)
-
-
-def create_app(test_config=None):
-    # create and configure the app
-    app = Flask(__name__, instance_relative_config=True)
-
-    if test_config is None:
-        # load the instance config, if it exists, when not testing
-        app.config.from_pyfile('config.py', silent=True)
-    else:
-        # load the test config if passed in
-        app.config.update(test_config)
-
-    # from .routes import init_app
-    # init_app(app)
-
-    # a simple page that says hello
-    @app.route('/hello')
-    def hello():
-        return 'Hello, World!'
-
-    return app

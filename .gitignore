@@ -1,0 +1,11 @@
+# Ignore .DS_Store files
+.DS_Store
+
+# Ignore all files in __pycache__ directories
+__pycache__/
+
+# Ignore all .cpython-*.pyc files
+*.cpython-*.pyc
+
+
+manual_modifications.md
