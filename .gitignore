@@ -7,5 +7,8 @@ __pycache__/
 # Ignore all .cpython-*.pyc files
 *.cpython-*.pyc
 
+.pytest_cache/
+
+comp0034_cw1.egg-info/
 
 manual_modifications.md
