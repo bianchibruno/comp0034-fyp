@@ -159,6 +159,7 @@ def test_login_missing_fields(client):
     response_missing_password = client.post('/login', json=missing_password, content_type="application/json")
     assert response_missing_password.status_code == 401
     assert 'Missing email or password' in response_missing_password.json['message']
+
 def test_token_expiry(client, new_user):
     """
     GIVEN a user is logged in and receives a token
@@ -183,3 +184,17 @@ def test_token_expiry(client, new_user):
     # Check if access is denied due to token expiry
     assert protected_response.status_code == 401
     assert 'Token has expired' in protected_response.json['message']
+
+def test_register_invalid_email_format(client):
+    """
+    GIVEN an invalid email format is provided during registration
+    WHEN a POST request is made to the register endpoint
+    THEN the status code should be 400 Bad Request with an error message about the email format
+    """
+    invalid_email_user = {
+        'email': 'invalid-email-format',
+        'password': 'ExamplePassword123'
+    }
+    response = client.post('/register', json=invalid_email_user, content_type="application/json")
+    assert response.status_code == 400
+    assert 'Invalid email format' in response.json['message']

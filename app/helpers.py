@@ -4,7 +4,7 @@ from flask import make_response, request, jsonify, current_app as app
 from functools import wraps
 from app import db
 from app.models import User
-
+import re
 
 def encode_auth_token(user_id):
     """Generates the Auth Token"""
@@ -70,3 +70,8 @@ def token_required(f):
         return f(*args, **kwargs)
 
     return decorator
+
+def is_valid_email(email):
+    """Simple regex check for validating an email address."""
+    email_regex = r'^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$'
+    return re.match(email_regex, email, re.IGNORECASE)

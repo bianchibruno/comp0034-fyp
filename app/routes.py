@@ -6,7 +6,7 @@ from marshmallow.exceptions import ValidationError
 from datetime import datetime, timedelta
 import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
-from .helpers import encode_auth_token, token_required
+from .helpers import encode_auth_token, token_required, is_valid_email
 
 
 
@@ -92,33 +92,33 @@ def init_app(myApp):
 def register():
     post_data = request.get_json()
 
-    # Check if both email and password are present in the request data
+    # Check if both email and password are present
     if not post_data or 'email' not in post_data or 'password' not in post_data:
-        # Return a 400 Bad Request response if any fields are missing
         return make_response(jsonify({"message": "Missing email or password"}), 400)
 
-    # Check if the user already exists in the database
+    # Validate the email format
+    if not is_valid_email(post_data['email']):
+        return make_response(jsonify({"message": "Invalid email format"}), 400)
+
+    # Check if the user already exists
     user = db.session.execute(
         db.select(User).filter_by(email=post_data['email'])
     ).scalar_one_or_none()
 
     if user:
-        # Return a 409 Conflict if the user already exists
         return make_response(jsonify({"message": "User already exists. Please Log in."}), 409)
 
     try:
-        # Create a new User instance with hashed password
         user = User(
             email=post_data['email'],
             password=generate_password_hash(post_data['password'])
         )
         db.session.add(user)
         db.session.commit()
-        # Return a 201 Created response on successful registration
         return make_response(jsonify({"message": "Successfully registered."}), 201)
+
     except Exception as err:
-        # Log the error and return a 500 Internal Server Error response if an exception occurs
-        print(err)  # It's a good practice to log the actual error in your logs
+        print(err)
         return make_response(jsonify({"message": "An error occurred. Please try again."}), 500)
 
 @bp.route('/login', methods=['POST'])
