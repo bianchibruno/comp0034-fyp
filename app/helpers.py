@@ -7,32 +7,28 @@ from app.models import User
 import re
 
 def encode_auth_token(user_id):
-    """Generates the Auth Token"""
+    """Generates an authentication token with a short expiration for user identification."""
     try:
-        # Sets the token to expire in 30 seconds
+        # Set token to expire in 30 seconds for security and testing purposes
         payload = {
             'exp': datetime.now(timezone.utc) + timedelta(seconds=30),
             'iat': datetime.now(timezone.utc),
             'sub': user_id
         }
-        # Flask app secret key, use current_app from Flask when accessing config in the actual app context
+        # Encode the payload using the application's secret key and the HS256 algorithm
         return jwt.encode(
             payload,
-            app.config.get('SECRET_KEY'),  # Ensuring current_app is imported from Flask
+            app.config.get('SECRET_KEY'),  # Retrieve the secret key from app config
             algorithm='HS256'
         )
     except Exception as e:
-        return e
-
+        return e  # Return the exception if encoding fails
 
 def decode_auth_token(auth_token):
     """
-    Decodes the auth token.
-    :param auth_token:
-    :return: token payload
+    Decodes the auth token and validates it against the secret key.
+    Returns the payload if the token is valid or a response if it fails validation.
     """
-    # Use PyJWT.decode(token, key, algorithms) to decode the token with the public key for the app
-    # See https://pyjwt.readthedocs.io/en/latest/api.html
     try:
         payload = jwt.decode(auth_token, app.config.get("SECRET_KEY"), algorithms=["HS256"])
         return payload
@@ -43,6 +39,7 @@ def decode_auth_token(auth_token):
     
 
 def token_required(f):
+    """Decorator to ensure that a valid token is passed with HTTP requests."""
     @wraps(f)
     def decorator(*args, **kwargs):
         token = request.headers.get('Authorization', None)
@@ -50,9 +47,9 @@ def token_required(f):
             return jsonify({'message': 'Authentication Token missing'}), 401
         
         try:
-            # Assuming the token includes the 'Bearer ' prefix
+            # Check if the token is properly formatted
             if token.startswith('Bearer '):
-                token = token[7:]  # Remove "Bearer " to isolate the token
+                token = token[7:]  # Strip "Bearer " prefix to isolate the token itself
             decoded_token = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
             current_user_id = decoded_token['sub']
             current_user = db.session.execute(
@@ -72,15 +69,15 @@ def token_required(f):
     return decorator
 
 def is_valid_email(email):
-    """Simple regex check for validating an email address."""
+    """Check if the provided email address matches the expected format."""
     email_regex = r'^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$'
     return re.match(email_regex, email, re.IGNORECASE)
 
 def requires_role(required_role):
+    """Decorator to enforce role-based access control (RBAC) for routes."""
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Assume token authentication is handled beforehand
             auth_token = request.headers.get('Authorization').split(" ")[1]
             data = jwt.decode(auth_token, app.config['SECRET_KEY'], algorithms=["HS256"])
             user = User.query.filter_by(id=data['sub']).first()

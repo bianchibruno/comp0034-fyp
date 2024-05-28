@@ -10,27 +10,29 @@ from .helpers import encode_auth_token, token_required, is_valid_email, requires
 
 
 
+# Initialize Marshmallow schemas for serialization and deserialization of data
 requests_schema = RequestSchema(many=True)
 request_schema = RequestSchema()
 
+# Create a Blueprint named 'api'
 bp = Blueprint('api', __name__)
 
 @bp.route('/requests', methods=['GET'])
 def get_requests():
-    # Use the session directly to perform a query
+    # Retrieve all requests from the database and serialize for JSON response
     all_requests = db.session.execute(db.select(Request)).scalars().all()
     return requests_schema.jsonify(all_requests)
 
 @bp.route('/requests/<int:request_id>', methods=['GET'])
 def get_request(request_id):
-    # Use session.get to fetch the record, or 404 if not found
+    # Fetch a single request by ID or return 404 if not found
     request = db.session.get(Request, request_id)
     if not request:
         abort(404)
     return request_schema.jsonify(request)
 
 @bp.route('/requests', methods=['POST'])
-@token_required
+@token_required  # Require authentication token to access this route
 def add_request():
     try:
         request_data = request.get_json()
@@ -39,11 +41,10 @@ def add_request():
         db.session.commit()
         return request_schema.jsonify(new_request), 201
     except ValidationError as err:
-        raise
-
+        raise err
 
 @bp.route('/requests/<int:request_id>', methods=['PATCH'])
-@token_required
+@token_required  # Require authentication token to access this route
 def update_request(request_id):
     request_data = request.get_json()
     request_item = db.session.get(Request, request_id)
@@ -54,9 +55,8 @@ def update_request(request_id):
     db.session.commit()
     return jsonify({'message': 'Request updated.', 'data': request_schema.dump(request_item)}), 200
 
-
 @bp.route('/requests/<int:request_id>', methods=['DELETE'])
-@token_required
+@token_required  # Require authentication token to access this route
 def delete_request(request_id):
     request = db.session.get(Request, request_id)
     if not request:
@@ -66,21 +66,23 @@ def delete_request(request_id):
     return jsonify({'message': 'Request deleted'}), 202
 
 def init_app(myApp):
+    # Register the Blueprint with the Flask application
     myApp.register_blueprint(bp)
 
 @bp.route('/register', methods=['POST'])
 def register():
+    # Register a new user and hash their password for storage
     post_data = request.get_json()
 
-    # Check if both email and password are present
+    # Ensure both email and password are provided
     if not post_data or 'email' not in post_data or 'password' not in post_data:
         return make_response(jsonify({"message": "Missing email or password"}), 400)
 
-    # Validate the email format
+    # Validate email format
     if not is_valid_email(post_data['email']):
         return make_response(jsonify({"message": "Invalid email format"}), 400)
 
-    # Check if the user already exists
+    # Check for existing user to avoid duplicates
     user = db.session.execute(
         db.select(User).filter_by(email=post_data['email'])
     ).scalar_one_or_none()
@@ -98,44 +100,43 @@ def register():
         return make_response(jsonify({"message": "Successfully registered."}), 201)
 
     except Exception as err:
-        print(err)
+        print(err)  # Log any error for debugging
         return make_response(jsonify({"message": "An error occurred. Please try again."}), 500)
 
 @bp.route('/login', methods=['POST'])
 def login():
-    """Logins in the User and generates a token."""
+    # User login and token generation
     auth = request.get_json()
 
-    # Check the email and password are present, if not return a 401 error
+    # Check for presence of email and password
     if not auth or not auth.get('email') or not auth.get('password'):
         msg = {'message': 'Missing email or password'}
         return make_response(jsonify(msg), 401)
 
-    # Find the user in the database
+    # Verify user and password correctness
     user = db.session.execute(
         db.select(User).filter_by(email=auth.get("email"))
     ).scalar_one_or_none()
 
-    # If the user is not found, or the password is incorrect, return 401 error
     if not user or not user.verify_password(auth.get('password')):
         msg = {'message': 'Incorrect email or password.'}
         return make_response(jsonify(msg), 401)
 
-    # If all OK then create the token
+    # Successful login leads to token generation
     token = encode_auth_token(user.id)
-
-    # Return the token and the user_id of the logged in user
     return make_response(jsonify({"user_id": user.id, "token": token}), 201)
 
 @bp.route('/secure-data', methods=['GET'])
-@token_required
+@token_required  # Secure endpoint requiring token authentication
 def secure_data():
+    # Example of a secure endpoint that provides sensitive data
     return jsonify({'message': 'Access to secure data successful'}), 200
 
 @bp.route('/delete-user/<string:email>', methods=['DELETE'])
-@token_required
-@requires_role('administrator')
+@token_required  # Require authentication token to access this route
+@requires_role('administrator')  # Require user to be an administrator
 def delete_user(email):
+    # Delete a user by their email
     user_to_delete = User.query.filter_by(email=email).first()
     if user_to_delete:
         db.session.delete(user_to_delete)
