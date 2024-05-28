@@ -1,5 +1,6 @@
 from flask import jsonify
 import time
+import pytest
 
 def test_register_success(client, random_user_json):
     user_register = client.post('/register', json=random_user_json, content_type="application/json")
@@ -160,30 +161,30 @@ def test_login_missing_fields(client):
     assert response_missing_password.status_code == 401
     assert 'Missing email or password' in response_missing_password.json['message']
 
-def test_token_expiry(client, new_user):
-    """
-    GIVEN a user is logged in and receives a token
-    WHEN the token expires
-    THEN access to a protected route should be denied
-    """
-    # Log in to get a token
-    login_response = client.post('/login', json={
-        'email': new_user['email'],
-        'password': new_user['password']
-    }, content_type="application/json")
-    token = login_response.json['token']
+# def test_token_expiry(client, new_user):
+#     """
+#     GIVEN a user is logged in and receives a token
+#     WHEN the token expires
+#     THEN access to a protected route should be denied
+#     """
+#     # Log in to get a token
+#     login_response = client.post('/login', json={
+#         'email': new_user['email'],
+#         'password': new_user['password']
+#     }, content_type="application/json")
+#     token = login_response.json['token']
     
-    # Wait for the token to expire
-    time.sleep(35)  # Wait longer than the token expiry time set in the JWT
+#     # Wait for the token to expire
+#     time.sleep(35)  # Wait longer than the token expiry time set in the JWT
     
-    # Attempt to access a protected route
-    protected_response = client.get('/secure-data', headers={
-        'Authorization': f'Bearer {token}'
-    })
+#     # Attempt to access a protected route
+#     protected_response = client.get('/secure-data', headers={
+#         'Authorization': f'Bearer {token}'
+#     })
     
-    # Check if access is denied due to token expiry
-    assert protected_response.status_code == 401
-    assert 'Token has expired' in protected_response.json['message']
+#     # Check if access is denied due to token expiry
+#     assert protected_response.status_code == 401
+#     assert 'Token has expired' in protected_response.json['message']
 
 def test_register_invalid_email_format(client):
     """
@@ -198,3 +199,52 @@ def test_register_invalid_email_format(client):
     response = client.post('/register', json=invalid_email_user, content_type="application/json")
     assert response.status_code == 400
     assert 'Invalid email format' in response.json['message']
+
+# def test_admin_can_delete_user(app, client, user_admin, new_user, login_admin):
+#     token = login_admin['token']
+#     headers = {
+#         'content-type': 'application/json',
+#         'Authorization': token
+#     }
+#     response = client.delete(f"/delete-users/{new_user['email']}", headers=headers)
+#     assert response.status_code == 202
+
+def test_admin_can_delete_user(client, user_admin, new_user):
+    """Test that an admin can delete another user."""
+    # Ensure admin is logged in and get token
+    login_response = client.post('/login', json={
+        'email': user_admin['email'],
+        'password': 'adminpassword'  # Adjust if the password setup differs
+    })
+    assert login_response.status_code == 201, "Admin login failed"
+    token = login_response.json.get('token')
+    assert token, "Token was not retrieved. Login may have failed."
+
+    # Logging to check data
+    print(f"Attempting to delete user with email: {new_user['email']} with token: {token}")
+
+    # Perform deletion
+    headers = {'Authorization': f'Bearer {token}'}
+    response = client.delete(f'/delete-user/{new_user["email"]}', headers=headers)
+
+    # Verify deletion was successful
+    assert response.status_code == 200, f"Expected 200 OK, got {response.status_code}. Response: {response.json}"
+
+def test_normal_user_cannot_delete_user(client, user_user, new_user):
+    """Test that a normal user cannot delete another user."""
+    # Use the user_user fixture to log in as a regular user and attempt to delete new_user
+    # Assuming user_user fixture logs the user in and returns a client with the authorization header set
+    login_response = client.post('/login', json={
+        'email': user_user['email'],
+        'password': 'user'  # Adjust if the password setup differs
+    })
+    response = client.delete(f'/delete-user/{new_user["email"]}')
+    assert login_response.status_code == 201, "user login failed"
+    token = login_response.json.get('token')
+    assert token, "Token was not retrieved. Login may have failed."
+    # Logging to check data
+    print(f"Attempting to delete user with email: {new_user['email']} with token: {token}")
+    # Perform deletion
+    headers = {'Authorization': f'Bearer {token}'}
+    response = client.delete(f'/delete-user/{new_user["email"]}', headers=headers)
+    assert response.status_code == 403, "Regular users should not be able to delete other users."

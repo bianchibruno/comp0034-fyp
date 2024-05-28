@@ -75,3 +75,17 @@ def is_valid_email(email):
     """Simple regex check for validating an email address."""
     email_regex = r'^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$'
     return re.match(email_regex, email, re.IGNORECASE)
+
+def requires_role(required_role):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # Assume token authentication is handled beforehand
+            auth_token = request.headers.get('Authorization').split(" ")[1]
+            data = jwt.decode(auth_token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            user = User.query.filter_by(id=data['sub']).first()
+            if not user or user.role != required_role:
+                return jsonify({'message': 'Unauthorized. Insufficient permissions'}), 403
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator

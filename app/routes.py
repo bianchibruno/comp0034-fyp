@@ -6,7 +6,7 @@ from marshmallow.exceptions import ValidationError
 from datetime import datetime, timedelta
 import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
-from .helpers import encode_auth_token, token_required, is_valid_email
+from .helpers import encode_auth_token, token_required, is_valid_email, requires_role
 
 
 
@@ -67,26 +67,6 @@ def delete_request(request_id):
 
 def init_app(myApp):
     myApp.register_blueprint(bp)
-
-# @bp.route('/register', methods=['POST'])
-# def register():
-#     post_data = request.get_json()
-#     user = db.session.execute(
-#         db.select(User).filter_by(email=post_data.get("email"))
-#     ).scalar_one_or_none()
-#     if not user:
-#         try:
-#             user = User(
-#                 email=post_data.get("email"),
-#                 password=generate_password_hash(post_data.get("password"))
-#             )
-#             db.session.add(user)
-#             db.session.commit()
-#             return make_response(jsonify({"message": "Successfully registered."}), 201)
-#         except Exception as err:
-#             return make_response(jsonify({"message": "An error occurred. Please try again."}), 500)
-#     else:
-#         return make_response(jsonify({"message": "User already exists. Please Log in."}), 409)
 
 @bp.route('/register', methods=['POST'])
 def register():
@@ -151,3 +131,15 @@ def login():
 @token_required
 def secure_data():
     return jsonify({'message': 'Access to secure data successful'}), 200
+
+@bp.route('/delete-user/<string:email>', methods=['DELETE'])
+@token_required
+@requires_role('administrator')
+def delete_user(email):
+    user_to_delete = User.query.filter_by(email=email).first()
+    if user_to_delete:
+        db.session.delete(user_to_delete)
+        db.session.commit()
+        return jsonify({'message': 'User deleted successfully'}), 200
+    else:
+        return jsonify({'message': 'User not found'}), 404

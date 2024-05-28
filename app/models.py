@@ -5,11 +5,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(db.Model):
     __tablename__ = 'user'
-    __table_args__ = {'extend_existing': True}  # Add this line
+    __table_args__ = {'extend_existing': True}  # Ensure the table redefinition is allowed
 
-    id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
-    email: Mapped[str] = mapped_column(db.Text, unique=True, nullable=False)
-    password_hash: Mapped[str] = mapped_column(db.String(128), nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    role = db.Column(db.String(10), default='user')  # Add a role attribute with default 'user'
 
     @property
     def password(self):

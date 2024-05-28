@@ -108,3 +108,66 @@ def login(client, new_user, app):
     # Get returned json data from the login function
     data = response.json
     yield data
+
+@pytest.fixture(scope="function")
+def login_admin(client, user_admin, app):
+    response = client.post('/login', json=user_admin, content_type="application/json")
+    data = response.json
+    return data
+
+@pytest.fixture(scope='function')
+def user_admin(app):
+    """Create a new user and add to the database.
+
+    Adds a new User to the database and also returns the JSON for a new user.
+
+    The scope is session as we need the user to be there throughout for testing the logged in functions.
+
+    """
+    user_json = {
+            'email': 'admin@example.com',
+            'password': 'adminpassword'
+        }
+    with app.app_context():
+        user = User(email=user_json['email'])
+        user.password = user_json['password']
+        user.role = 'administrator'
+        db.session.add(user)
+        db.session.commit()
+
+    yield user_json
+
+    # Remove the region from the database at the end of the test if it still exists
+    with app.app_context():
+        user_exists = db.session.query(exists().where(User.email == user_json['email'])).scalar()
+        if user_exists:
+            db.session.delete(user)
+            db.session.commit()
+
+@pytest.fixture(scope='function')
+def user_user(app):
+    """Create a new user and add to the database.
+
+    Adds a new User to the database and also returns the JSON for a new user.
+
+    The scope is session as we need the user to be there throughout for testing the logged in functions.
+
+    """
+    user_json = {
+            'email': 'user@example.com',
+            'password': 'user'
+        }
+    with app.app_context():
+        user = User(email=user_json['email'])
+        user.password = user_json['password']
+        db.session.add(user)
+        db.session.commit()
+
+    yield user_json
+
+    # Remove the region from the database at the end of the test if it still exists
+    with app.app_context():
+        user_exists = db.session.query(exists().where(User.email == user_json['email'])).scalar()
+        if user_exists:
+            db.session.delete(user)
+            db.session.commit()
