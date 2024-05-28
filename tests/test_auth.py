@@ -1,4 +1,4 @@
-from flask import jsonify
+from flask import jsonify, json
 import time
 import pytest
 
@@ -161,30 +161,30 @@ def test_login_missing_fields(client):
     assert response_missing_password.status_code == 401
     assert 'Missing email or password' in response_missing_password.json['message']
 
-# def test_token_expiry(client, new_user):
-#     """
-#     GIVEN a user is logged in and receives a token
-#     WHEN the token expires
-#     THEN access to a protected route should be denied
-#     """
-#     # Log in to get a token
-#     login_response = client.post('/login', json={
-#         'email': new_user['email'],
-#         'password': new_user['password']
-#     }, content_type="application/json")
-#     token = login_response.json['token']
+def test_token_expiry(client, new_user):
+    """
+    GIVEN a user is logged in and receives a token
+    WHEN the token expires
+    THEN access to a protected route should be denied
+    """
+    # Log in to get a token
+    login_response = client.post('/login', json={
+        'email': new_user['email'],
+        'password': new_user['password']
+    }, content_type="application/json")
+    token = login_response.json['token']
     
-#     # Wait for the token to expire
-#     time.sleep(35)  # Wait longer than the token expiry time set in the JWT
+    # Wait for the token to expire
+    time.sleep(35)  # Wait longer than the token expiry time set in the JWT
     
-#     # Attempt to access a protected route
-#     protected_response = client.get('/secure-data', headers={
-#         'Authorization': f'Bearer {token}'
-#     })
+    # Attempt to access a protected route
+    protected_response = client.get('/secure-data', headers={
+        'Authorization': f'Bearer {token}'
+    })
     
-#     # Check if access is denied due to token expiry
-#     assert protected_response.status_code == 401
-#     assert 'Token has expired' in protected_response.json['message']
+    # Check if access is denied due to token expiry
+    assert protected_response.status_code == 401
+    assert 'Token has expired' in protected_response.json['message']
 
 def test_register_invalid_email_format(client):
     """
@@ -199,15 +199,6 @@ def test_register_invalid_email_format(client):
     response = client.post('/register', json=invalid_email_user, content_type="application/json")
     assert response.status_code == 400
     assert 'Invalid email format' in response.json['message']
-
-# def test_admin_can_delete_user(app, client, user_admin, new_user, login_admin):
-#     token = login_admin['token']
-#     headers = {
-#         'content-type': 'application/json',
-#         'Authorization': token
-#     }
-#     response = client.delete(f"/delete-users/{new_user['email']}", headers=headers)
-#     assert response.status_code == 202
 
 def test_admin_can_delete_user(client, user_admin, new_user):
     """Test that an admin can delete another user."""
@@ -248,3 +239,59 @@ def test_normal_user_cannot_delete_user(client, user_user, new_user):
     headers = {'Authorization': f'Bearer {token}'}
     response = client.delete(f'/delete-user/{new_user["email"]}', headers=headers)
     assert response.status_code == 403, "Regular users should not be able to delete other users."
+
+
+def test_get_all_requests(client):
+    """Test GET /requests to retrieve all requests."""
+    response = client.get('/requests')
+    assert response.status_code == 200
+    # Check if the response is application/json
+    assert response.headers["Content-Type"] == 'application/json'
+    # Decode the JSON response
+    data = json.loads(response.data)
+    # Ensure the data is a list (even if it's empty)
+    assert isinstance(data, list)
+
+def test_get_single_request(client):
+    """Test GET /requests/<id> to retrieve a specific request."""
+    # Assuming there's at least one request with id 1 for testing purposes
+    response = client.get('/requests/1')
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == 'application/json'
+    data = json.loads(response.data)
+    # Check that the data includes keys you expect in a Request object
+    assert 'id' in data
+    assert 'case_type' in data  # Assuming 'case_type' is a field in your Request model
+
+def test_get_requests_json(client):
+    """
+    Test that GET /requests returns a list of requests in JSON format
+    and includes specific FOIA case details.
+    """
+    # Perform the GET request
+    response = client.get("/requests")
+    
+    # Assert the response status code is 200 (OK)
+    assert response.status_code == 200
+    
+    # Assert the Content-Type is application/json
+    assert response.headers["Content-Type"] == "application/json"
+    
+    # Convert the response data to JSON
+    response_data = json.loads(response.data)
+    first_request = {
+  "case_active_days_grouped": "More than 60 days used",
+  "case_type": "FOIA Case",
+  "id": 1,
+  "request_received_month": "November",
+  "request_received_quarter": "Quarter 4",
+  "request_received_year": "2018",
+  "status": "Closed"
+}
+    # Check that the response is a list
+    assert first_request in response_data
+
+def test_get_request_not_found(client):
+    """Test GET /requests/<id> for a non-existing request."""
+    response = client.get('/requests/999999')  # Assuming 999 is an id that doesn't exist
+    assert response.status_code == 404

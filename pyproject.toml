@@ -9,7 +9,8 @@ dependencies = [
     "marshmallow-sqlalchemy",
     "pandas",
     "selenium",
-    "pytest"
+    "pytest",
+    "pyarrow"
 ]
 
 
